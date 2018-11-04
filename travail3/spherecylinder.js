@@ -45,7 +45,9 @@ var materialShininess = 100.0;
 
 var ambientProduct, diffuseProduct, specularProduct;
 
-
+let lastPos = {x:0,y:0,z: -50};
+let olds= [];
+olds.push({pos:lastPos, dir:"up"});
 function render() {
     gl.clearColor(0.79, 0.76, 0.27, 1);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
@@ -58,40 +60,75 @@ function render() {
 	normalMatrix = extractNormalMatrix(modelview);
 		
     var initialmodelview = modelview;
+    let lastDirection = "";
 
-    //  now, draw sphere model
-    modelview = initialmodelview;
-    modelview = mult(modelview, translate(0.0, 0.0, 0.0));
-    modelview = mult(modelview, rotate(0.0, 1, 0, 0));
-    normalMatrix = extractNormalMatrix(modelview);  // always extract the normal matrix before scaling
-    modelview = mult(modelview, scale(0.3, 0.3, 0.3));
-    sphere.render();
+    let lastObj;    
+    olds.forEach(elem => {
+        lastObj = drawTube(elem.pos,elem.dir);
+    });
+    let nPos = nextPosition(lastObj.x,lastObj.y,lastObj.z);
+    nPos = {x:nPos[0],y:nPos[1],z:nPos[2]}; 
+    olds.push({pos:nPos,dir:randDir(lastDirection)});
+    
+    
+    function randDir(dir){
+        let opposite = {up:"down",down:"up",right:"left",left:"right",behind:"front",front:"behind"};
+        let possibleDir=["right","left","up","down","front","behind"];
+        let rand = Math.floor((Math.random() * possibleDir.length));        
+        if (possibleDir[rand] != opposite[dir]) {
+            return possibleDir[rand];
+        }
+        return randDir(dir);
+    }
 
-  
-    //  now, draw cylinder model
-    modelview = initialmodelview;
-    modelview = mult(modelview, translate(0.0, 10, 0.0));
-    modelview = mult(modelview, rotate(90.0, 1, 0, 0));
-    normalMatrix = extractNormalMatrix(modelview);  // always extract the normal matrix before scaling
-    modelview = mult(modelview, scale(0.2, 0.2, 1));
-    cylinder.render();
-	
-	//  now, draw sphere model
-    modelview = initialmodelview;
-    modelview = mult(modelview, translate(0.0, 20.0, 0.0));
-    modelview = mult(modelview, rotate(0.0, 1, 0, 0));
-    normalMatrix = extractNormalMatrix(modelview);  // always extract the normal matrix before scaling
-    modelview = mult(modelview, scale(0.3, 0.3, 0.3));
-    sphere.render();
-	
-	//  now, draw cylinder model
-    modelview = initialmodelview;
-    modelview = mult(modelview, translate(0.0, 20.0, 10.0));
-    modelview = mult(modelview, rotate(0.0, 1, 0, 0));
-    normalMatrix = extractNormalMatrix(modelview);  // always extract the normal matrix before scaling
-    modelview = mult(modelview, scale(0.2, 0.2, 1));
-    cylinder.render();
+    function drawTube(pos,dir) {
+        let posi = nextPosition(pos.x,pos.y,pos.z,lastDirection)  ;
+        if(dir != lastDirection){             
+            drawSphere(posi[0],posi[1],posi[2]);
+        }        
+        posi = nextPosition(posi[0],posi[1],posi[2],dir)
+        drawCylinder(posi[0],posi[1],posi[2],posi[3],posi[4],posi[5],posi[6]);
+        lastDirection = dir;
+        let resPos = {x:posi[0],y:posi[1],z:posi[2]}
+        return resPos; 
+    }
 
+    function drawCylinder(posX,posY,posZ,angX,angY,angZ, angI) {
+        modelview = initialmodelview;
+        modelview = mult(modelview, translate(posX,posY,posZ));
+        modelview = mult(modelview, rotate(angX,angY,angZ, angI));
+        normalMatrix = extractNormalMatrix(modelview); // always extract the normal matrix before scaling
+        modelview = mult(modelview, scale(0.2, 0.2, 1));
+        cylinder.render();
+    }
+
+    function drawSphere(posX,posY,posZ) {
+        modelview = initialmodelview;
+        modelview = mult(modelview, translate(posX, posY, posZ));
+        modelview = mult(modelview, rotate(0.0, 1, 0, 0));
+        normalMatrix = extractNormalMatrix(modelview); // always extract the normal matrix before scaling
+        modelview = mult(modelview, scale(0.3, 0.3, 0.3));
+        sphere.render();
+    }
+
+    function nextPosition(posX,posY,posZ,dir){
+        switch(dir){
+            case "up":
+                return [posX,posY+10,posZ, 90.0, 1, 0, 0];
+            case "down":
+                return [posX,posY-10,posZ, 90.0, 1, 0, 0];
+            case "right":
+                return  [posX+10,posY,posZ,90, 1, 90, 1];
+            case "left":
+                return  [posX-10,posY,posZ,90, 1, 90, 1];
+            case "front":
+                return [posX,posY,posZ+10, 90.0, 0, 0, 1];
+            case "behind":
+                return [posX,posY,posZ-10, 90.0, 0, 0, 1];
+            default:
+                return [posX,posY,posZ];
+        }
+    }
 	}
 
 
@@ -342,7 +379,7 @@ window.onload = function init() {
 
 	resize(canvas);  // size the canvas to the current window width and height
 
-    render();
+    setInterval(render, 1000);
 }
 
 function resize(canvas) {  // ref. https://webglfundamentals.org/webgl/lessons/webgl-resizing-the-canvas.html
